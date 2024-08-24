@@ -25,7 +25,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 		),
 		externalDocs = @ExternalDocumentation(
 				description = "Github Repo for this project",
-				url = "https://github.com/patricktrandev/project_management_backend"
+				url = "https://github.com/patricktrandev/techx-backend"
 		)
 )
 public class ShopappApplication {
