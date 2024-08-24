@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @Data
 @Getter
 @Setter
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class Token {
@@ -26,6 +27,9 @@ public class Token {
     private int revoked;
     private int expired;
 
+
+    @Column(name = "device_type")
+    private String deviceType;
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;

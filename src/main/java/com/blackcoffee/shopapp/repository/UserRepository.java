@@ -12,8 +12,10 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
     Boolean existsByPhoneNumber(String phoneNumber);
+    Boolean existsByEmail(String email);
     Optional<User> findByPhoneNumber(String phoneNumber);
+    Optional<User> findByEmail(String email);
     @Query("SELECT u FROM User u where " +
-            "(:keyword IS NULL OR :keyword= '' or u.fullName like %:keyword% or u.phoneNumber like %:keyword% or u.address like %:keyword%)")
+            "(:keyword IS NULL OR :keyword= '' OR u.email like %:keyword% or u.fullName like %:keyword% or u.phoneNumber like %:keyword% or u.address like %:keyword%)")
     Page<User> searchUser(@Param("keyword")String keyword, Pageable pageable);
 }

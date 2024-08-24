@@ -3,9 +3,11 @@ package com.blackcoffee.shopapp.configuration;
 import com.blackcoffee.shopapp.utils.JwtTokenUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.data.util.Pair;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
@@ -52,16 +54,32 @@ public class WebSecurityConfig {
 //                        httpSecurityCorsConfigurer.configurationSource(source);
 //                    }
 //                })
-                .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class)
+
                 .authorizeHttpRequests(request-> {
                     request
                             .requestMatchers(
                                     String.format("%s/users/register",apiPrefix),
-                                    String.format("%s/users/login",apiPrefix)
+                                    String.format("%s/users/login",apiPrefix),
+                                    String.format("%s/users/reset/send-email",apiPrefix),
+                                    String.format("%s/users/reset-password",apiPrefix),
+                                    String.format("%s/users/token-valid",apiPrefix),
+                                    String.format("/swagger-ui/**"),
+                                    String.format("/swagger-resources/*"),
+                                    String.format("/v3/api-docs")
+
+
+
+
+
                             ).permitAll()
                             .requestMatchers(
                                     HttpMethod.GET,String.format("%s/users/**",apiPrefix)
                             ).permitAll()
+                            .requestMatchers("/swagger-ui/**",
+                                    "/swagger-resources/*",
+                                    "/v3/api-docs/**")
+                            .permitAll()
+
                             .requestMatchers(
                                     HttpMethod.GET,String.format("%s/products/**",apiPrefix)
                             ).permitAll()
@@ -71,6 +89,7 @@ public class WebSecurityConfig {
                             .requestMatchers(
                                     HttpMethod.GET,String.format("%s/products/images/**",apiPrefix)
                             ).permitAll()
+
 //                            .requestMatchers(
 //                                    HttpMethod.GET,String.format("%s/products/img/**",apiPrefix)
 //                            ).permitAll()
@@ -80,9 +99,9 @@ public class WebSecurityConfig {
                             .requestMatchers(
                                     HttpMethod.PUT,String.format("%s/users/**",apiPrefix)
                             ).hasAnyRole("USER", "ADMIN")
-//                            .requestMatchers(
-//                                    HttpMethod.GET,String.format("%s/users/**",apiPrefix)
-//                            ).hasAnyRole( "ADMIN")
+                            .requestMatchers(
+                                    HttpMethod.PUT,String.format("%s/roles/**",apiPrefix)
+                            ).hasAnyRole( "ADMIN")
                             .requestMatchers(
                                     HttpMethod.POST,String.format("%s/categories/**",apiPrefix)
                             ).hasAnyRole( "ADMIN")
@@ -125,6 +144,7 @@ public class WebSecurityConfig {
                             ).hasRole("ADMIN")
                             .anyRequest().authenticated();
                 })
+                .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 }

@@ -1,17 +1,22 @@
 package com.blackcoffee.shopapp.controller;
 
-import com.blackcoffee.shopapp.dto.UserDto;
-import com.blackcoffee.shopapp.dto.UserLoginDto;
+import com.blackcoffee.shopapp.dto.*;
 import com.blackcoffee.shopapp.model.User;
 import com.blackcoffee.shopapp.response.*;
+import com.blackcoffee.shopapp.services.BaseRedisService;
+import com.blackcoffee.shopapp.services.TokenService;
 import com.blackcoffee.shopapp.services.UserService;
 import com.blackcoffee.shopapp.utils.LocalizationUtils;
 import com.blackcoffee.shopapp.utils.MessageKey;
 import com.blackcoffee.shopapp.utils.WebUtils;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+import org.apache.coyote.Response;
 import org.hibernate.sql.Update;
 import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
@@ -32,15 +37,85 @@ import java.util.Locale;
 @RestController
 @RequestMapping("${api.prefix}/users")
 @RequiredArgsConstructor
+@Tag(name = "CRUD REST API for User Resource")
 public class UserController {
 
     private final UserService userService;
+    private final TokenService tokenService;
+    private final BaseRedisService baseRedisService;
     private final MessageSource messageSource;
     private final LocaleResolver localResolver;
     private final LocalizationUtils localizationUtils;
     private final WebUtils webUtils;
 
-
+    @Operation(
+            summary = "Request send email to reset password."
+    )
+    @PostMapping("/reset/send-email")
+    public ResponseEntity<?> sendEmailResetPassword(@Valid @RequestBody SendEmail sendEmail, BindingResult bindingResult){
+        try{
+            if(bindingResult.hasErrors()){
+                List<String> errors =bindingResult.getFieldErrors().stream().map(e->e.getDefaultMessage()).toList();
+                return ResponseEntity.badRequest().body(errors);
+            }
+            userService.requestResetPassword(sendEmail.getEmail());
+            return ResponseEntity.ok("Please check your email. Email sent successfully!");
+        }catch (Exception e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    @Operation(
+            summary = "Check Valid Token In Redis"
+    )
+    @PostMapping("/token-valid")
+    public ResponseEntity<?> checkTokenValid(@Valid @RequestBody TokenResetPassword tokenResetPassword, BindingResult bindingResult){
+        try{
+            if(bindingResult.hasErrors()){
+                List<String> errors =bindingResult.getFieldErrors().stream().map(e->e.getDefaultMessage()).toList();
+                return ResponseEntity.badRequest().body(errors);
+            }
+            userService.checkTokenValid(tokenResetPassword.getOtp(), tokenResetPassword.getEmail());
+            return ResponseEntity.ok("Token is valid.");
+        }catch (Exception e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    @Operation(
+            summary = "Reset password"
+    )
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordDto resetPasswordDto, BindingResult bindingResult){
+        try{
+            if(bindingResult.hasErrors()){
+                List<String> errors =bindingResult.getFieldErrors().stream().map(e->e.getDefaultMessage()).toList();
+                return ResponseEntity.badRequest().body(errors);
+            }
+            userService.resetPassword(resetPasswordDto.getNewPassword(), resetPasswordDto.getEmail());
+            return ResponseEntity.ok("Reset password successfully.");
+        }catch (Exception e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    @Operation(
+            summary = "Change password by admin or user"
+    )
+    @PostMapping("/change-password")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_USER')")
+    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordDto changePasswordDto, BindingResult bindingResult){
+        try{
+            if(bindingResult.hasErrors()){
+                List<String> errors =bindingResult.getFieldErrors().stream().map(e->e.getDefaultMessage()).toList();
+                return ResponseEntity.badRequest().body(errors);
+            }
+            userService.changePassword(changePasswordDto.getUserId(), changePasswordDto.getNewPassword());
+            return ResponseEntity.ok("Reset password successfully.");
+        }catch (Exception e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    @Operation(
+            summary = "Register new account"
+    )
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Valid @RequestBody UserDto userDto, BindingResult bindingResult){
 
@@ -58,6 +133,7 @@ public class UserController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
 //    @PostMapping("/login")
 //    public ResponseEntity<LoginResponse> login(@Valid @RequestBody UserLoginDto userLoginDto, HttpServletRequest request){
 //        try{
@@ -73,11 +149,19 @@ public class UserController {
 //        }
 //
 //    }
-
+@Operation(
+        summary = "Login "
+)
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody UserLoginDto userLoginDto){
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody UserLoginDto userLoginDto, HttpServletRequest request){
         try{
             String tokenLogin = userService.loginUser(userLoginDto.getPhoneNumber(), userLoginDto.getPassword(), userLoginDto.getRoleId());
+
+            String userAgent= request.getHeader("User-Agent");
+
+            UserResponse user=userService.getUserDetailsFromToken(tokenLogin);
+
+            tokenService.addToken(user,tokenLogin,userAgent);
 
             LoginResponse response= LoginResponse.builder()
                     .message(localizationUtils.getLocalizedMessage(MessageKey.LOGIN_SUCCESS,webUtils))
@@ -90,6 +174,11 @@ public class UserController {
         }
 
     }
+
+    @Operation(
+            summary = "Get user details by providing token"
+    )
+
     @GetMapping("/details")
     public ResponseEntity<?> getUserDertails(@RequestHeader("Authorization") String token){
         try{
@@ -101,6 +190,23 @@ public class UserController {
         }
 
     }
+    @Operation(
+            summary = "Get user information by providing id"
+    )
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getUserDertailsById(@PathVariable("id") Long id){
+        try{
+
+            UserResponse user =userService.getUserDetailsById(id);
+            return ResponseEntity.ok(user);
+        }catch (Exception e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+
+    }
+    @Operation(
+            summary = "Get list of users by amdin"
+    )
     @GetMapping()
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<?> getUsersByAdmin(@RequestHeader("Authorization") String token,
@@ -125,6 +231,9 @@ public class UserController {
         }
 
     }
+    @Operation(
+            summary = "Update user information by user or admin"
+    )
     @PutMapping()
     public ResponseEntity<?> updateUserDertails(@RequestHeader("Authorization") String token,@RequestBody UserDto userDto){
         try{

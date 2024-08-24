@@ -7,9 +7,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+
 import lombok.NonNull;
-
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.util.Pair;
@@ -36,7 +35,7 @@ public class JwtTokenFilter extends OncePerRequestFilter {
     private String apiPrefix;
 
     @Override
-    protected void doFilterInternal(@NonNull HttpServletRequest request,@NonNull HttpServletResponse response,@NonNull FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
         //filterChain.doFilter(request,response);//enable bypass
         try{
             if(isByPassToken(request)){
@@ -65,6 +64,7 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 
             filterChain.doFilter(request,response);
         }catch (Exception e){
+            System.out.println(e.getMessage());
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED,"Unauthorized");
         }
 
@@ -74,10 +74,31 @@ public class JwtTokenFilter extends OncePerRequestFilter {
         final List<Pair<String, String>> byPassTokens= Arrays.asList(
                 Pair.of(apiPrefix+"/products","GET"),
                 Pair.of(apiPrefix+"/roles","GET"),
-
+                Pair.of(apiPrefix+"/users/token-valid","POST"),
                 Pair.of(apiPrefix+"/categories","GET"),
                 Pair.of(apiPrefix+"/users/register","POST"),
-                Pair.of(apiPrefix+"/users/login","POST")
+                Pair.of(apiPrefix+"/users/login","POST"),
+                Pair.of(apiPrefix+"/users/reset-password","POST"),
+                Pair.of(apiPrefix+"/users/reset/send-email","POST"),
+                Pair.of("/swagger-ui/**","GET"),
+                Pair.of("/swagger-ui/index.html","GET"),
+                Pair.of("/swagger-resources/**","GET"),
+                Pair.of("/v3/api-docs","GET"),
+                Pair.of("/swagger-ui/index.css","GET"),
+                Pair.of("/swagger-ui/swagger-ui.css","GET"),
+                Pair.of("/swagger-ui/swagger-ui-standalone-preset.js","GET"),
+                Pair.of("/swagger-ui/swagger-initializer.js","GET"),
+                Pair.of("/swagger-ui/swagger-ui-bundle.js","GET"),
+                Pair.of("/swagger-ui/swagger-initializer.js","GET"),
+                Pair.of("/swagger-ui/favicon-32x32.png","GET"),
+                Pair.of("/swagger-ui/favicon-16x16.png","GET")
+
+
+
+
+
+
+
 
         );
         String requestPath=request.getServletPath();

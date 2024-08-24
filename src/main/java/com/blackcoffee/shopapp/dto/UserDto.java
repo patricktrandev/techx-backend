@@ -25,6 +25,8 @@ public class UserDto {
     @NotBlank(message = "Phone number is required")
     @JsonProperty("phone_number")
     private String phoneNumber;
+    @JsonProperty("email")
+    private String email;
     private String address;
     @NotBlank(message = "Password is required")
     private String password;

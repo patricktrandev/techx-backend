@@ -7,6 +7,8 @@ import com.blackcoffee.shopapp.response.OrderListResponse;
 import com.blackcoffee.shopapp.response.OrderResponse;
 import com.blackcoffee.shopapp.response.ProductResponse;
 import com.blackcoffee.shopapp.services.OrderService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,10 +27,14 @@ import java.util.List;
 @RestController
 @RequestMapping("${api.prefix}/orders")
 @RequiredArgsConstructor
+@Tag(name = "CRUD REST API for Order Resource")
 public class OrderController {
     private final OrderService orderService;
     @GetMapping("/{userId}")
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_USER')")
+    @Operation(
+            summary = "Get list of orders by user id "
+    )
     public ResponseEntity<?> getAllOrders(@PathVariable("userId") long id, @RequestHeader("Authorization") String token){
 
         try{
@@ -40,6 +46,9 @@ public class OrderController {
     }
     @GetMapping("/get-orders-by-keyword")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @Operation(
+            summary = "Get all orders by admin"
+    )
     public ResponseEntity<?> getOrdersByKeyword(@RequestParam(defaultValue = "") String keyword,
                                                 @RequestParam(required = false,defaultValue = "0") int page, @RequestParam(required = false, defaultValue = "10") int limit,
                                                 @RequestHeader("Authorization") String token){
@@ -60,6 +69,9 @@ public class OrderController {
         }
     }
     @PostMapping
+    @Operation(
+            summary = "Create order"
+    )
     public ResponseEntity<?> createOrder(@Valid @RequestBody OrderDto orderDto, BindingResult bindingResult){
 
         try{
@@ -76,6 +88,9 @@ public class OrderController {
 
     @GetMapping("/order/{id}")
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_USER')")
+    @Operation(
+            summary = "Get order by admin or user"
+    )
     public ResponseEntity<?> getOrderById(@PathVariable("id") long id){
 
         try{
@@ -87,6 +102,9 @@ public class OrderController {
     }
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @Operation(
+            summary = "Update order by admin"
+    )
     public ResponseEntity<?> updateOrder(@PathVariable("id") long id,@Valid @RequestBody OrderDto orderDto, BindingResult bindingResult){
         try{
             if(bindingResult.hasErrors()){
@@ -101,6 +119,9 @@ public class OrderController {
     }
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @Operation(
+            summary = "Update order status by admin"
+    )
     public ResponseEntity<?> updateOrderStatus(@PathVariable("id") long id, @Valid @RequestBody OrderStatusDto orderStatusDto, BindingResult bindingResult,@RequestHeader("Authorization") String token){
         try{
             if(bindingResult.hasErrors()){
@@ -115,6 +136,9 @@ public class OrderController {
     }
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @Operation(
+            summary = "Delete order by admin"
+    )
     public ResponseEntity<?> deleteOrderById(@PathVariable("id") long id){
 
         try{

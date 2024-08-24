@@ -29,6 +29,7 @@ public class JwtTokenUtils {
         //properties-> claims
         Map<String, Object> claims= new HashMap<>();
         claims.put("phoneNumber",user.getPhoneNumber());
+        claims.put("email",user.getEmail());
         claims.put("userId",user.getId());
         try{
             String token=Jwts.builder()
@@ -65,8 +66,13 @@ public class JwtTokenUtils {
         Date expirationDate= this.extractClaim(token, Claims::getExpiration);
         return expirationDate.before(new Date());
     }
+
     public String extractPhoneNumber(String token){
         return extractClaim(token, Claims::getSubject);
+    }
+    public String getEmailFromToken(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.get("email", String.class);
     }
     public boolean validateToken(String token, UserDetails userDetails){
         String phoneNumber= extractPhoneNumber(token);

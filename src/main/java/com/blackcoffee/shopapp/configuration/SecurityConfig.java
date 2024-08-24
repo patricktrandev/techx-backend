@@ -2,6 +2,8 @@ package com.blackcoffee.shopapp.configuration;
 
 import com.blackcoffee.shopapp.model.User;
 import com.blackcoffee.shopapp.repository.UserRepository;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
 @RequiredArgsConstructor
+
 public class SecurityConfig {
     private final UserRepository userRepository;
     //user details object

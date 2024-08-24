@@ -7,15 +7,16 @@ import com.blackcoffee.shopapp.model.Product;
 import com.blackcoffee.shopapp.model.ProductImage;
 import com.blackcoffee.shopapp.response.ProductListResponse;
 import com.blackcoffee.shopapp.response.ProductResponse;
+import com.blackcoffee.shopapp.services.BaseRedisService;
 import com.blackcoffee.shopapp.services.ProductService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.javafaker.Faker;
 import com.sun.tools.jconsole.JConsoleContext;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
@@ -48,11 +49,18 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("${api.prefix}/products")
 @CrossOrigin(origins = "http://localhost:4200", allowedHeaders = "*")
+@Tag(name = "CRUD REST API for Product Resource")
 @RequiredArgsConstructor
 public class ProductController {
-    private static  final Logger logger= LoggerFactory.getLogger(ProductController.class);
+    //private static  final Logger logger= LoggerFactory.getLogger(ProductController.class);
     private final ProductService productService;
     private final ObjectMapper objectMapper;
+    private final BaseRedisService baseRedisService;
+
+
+    @Operation(
+            summary = "Get all products by all users"
+    )
     @GetMapping
     public ResponseEntity<ProductListResponse> getAllProducts(@RequestParam(required = false) int page, @RequestParam(required = false) int limit,
                                                               @RequestParam(defaultValue = "0", name = "category_id")Long categoryId,
@@ -70,10 +78,16 @@ public class ProductController {
                 .totalElements(totalElements)
                 .build());
     }
+    @Operation(
+            summary = "Get product information by all users"
+    )
     @GetMapping("/{id}")
     public ResponseEntity<Product> getProductDetailsById(@PathVariable("id") int id){
         return ResponseEntity.ok(productService.getProductById(id));
     }
+    @Operation(
+            summary = "Get list of products by admin"
+    )
     @GetMapping("/by-ids")
     public ResponseEntity<?> getProductListByIds(@RequestParam("ids") String ids){
         try{
@@ -86,6 +100,9 @@ public class ProductController {
         }
     }
     @GetMapping("/{id}/images-list")
+    @Operation(
+            summary = "Get list of images by all users"
+    )
     public ResponseEntity<?> getImageProductsByProductId(@PathVariable() Long id){
         try{
             return ResponseEntity.ok(productService.getListProductImages(id));
@@ -95,7 +112,9 @@ public class ProductController {
             return ResponseEntity.notFound().build();
         }
     }
-
+    @Operation(
+            summary = "Upload image and save image by blob data"
+    )
     @PostMapping(value = "/uploads/{id}",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadImage(@PathVariable("id") long id , @ModelAttribute("files") List<MultipartFile> files,  @RequestHeader("Authorization") String token){
         try{
@@ -115,7 +134,7 @@ public class ProductController {
                     return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body( "File is too large. Maximum size is 10MB");
                 }
                 String contentType=file.getContentType();
-                logger.info(contentType);
+                //logger.info(contentType);
                 //System.out.println(contentType);
                 if(contentType==null || !contentType.startsWith("image/") ){
                     return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body("File must be an image");
@@ -144,6 +163,9 @@ public class ProductController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+    @Operation(
+            summary = "Create product without image"
+    )
     @PostMapping
     public ResponseEntity<?> createProduct(@Valid @RequestBody ProductDto productDto,
 //                                           @RequestPart("file")MultipartFile file,
@@ -164,6 +186,9 @@ public class ProductController {
         }
 
     }
+    @Operation(
+            summary = "Create product with list of images"
+    )
     @PostMapping(value="/products-upload",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<?> createProductWithUploadImage(@Valid @RequestPart("product") MultipartFile productDto, @RequestPart("productImage") List<MultipartFile> files,
@@ -203,7 +228,7 @@ public class ProductController {
                     return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body("File must be an image");
                 }
                 String fileName = storeFile(file);
-                logger.info(fileName);
+                //logger.info(fileName);
                 //set thumbnail first img
                 if (index == 1) {
                    uploadedProduct.setThumbnail(fileName);
@@ -270,7 +295,9 @@ public class ProductController {
 
         return contentType!=null && contentType.startsWith("image/");
     }
-
+    @Operation(
+            summary = "Update product by admin"
+    )
     @PutMapping("/{id}")
     public ResponseEntity<?> updateProduct(@PathVariable("id") int id, @Valid @RequestBody ProductDto productDto, BindingResult bindingResult,  @RequestHeader("Authorization") String token){
         if(bindingResult.hasErrors()){
@@ -280,11 +307,17 @@ public class ProductController {
 
         return ResponseEntity.ok(productService.updateProduct(id, productDto));
     }
+    @Operation(
+            summary = "Delete product by admin"
+    )
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteProduct(@PathVariable("id") int id, @RequestHeader("Authorization") String token){
         productService.deleteProduct(id);
         return ResponseEntity.ok("Delete products successfully");
     }
+    @Operation(
+            summary = "Fake data importing to db"
+    )
     @PostMapping("/generateFakeProducts")
     public ResponseEntity<String> generateFakeProducts(){
         Faker faker= new Faker();
@@ -306,7 +339,9 @@ public class ProductController {
 
         return ResponseEntity.ok("generate fake products successfully");
     }
-
+    @Operation(
+            summary = "Upload image and save in disk"
+    )
     @PostMapping(value="/save-image/{productId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public ResponseEntity<String> uploadImage(@PathVariable("productId") Long productId,
@@ -331,6 +366,9 @@ public class ProductController {
         return Optional.ofNullable(imageBlob);
 
     }
+    @Operation(
+            summary = "Get image url"
+    )
     @GetMapping("/images/{name}")
     public ResponseEntity<?> getImageProducts(@PathVariable String name) {
         try{
