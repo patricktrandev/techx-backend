@@ -25,7 +25,7 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     @Transactional
-    public Token addToken(UserResponse user, String token,String deviceType) {
+    public Token addToken(User user, String token,String deviceType) {
         List<Token> userTokens = tokenRepository.findByUserId(user.getId());
         int tokenCount = userTokens.size();
 
@@ -39,7 +39,7 @@ public class TokenServiceImpl implements TokenService {
         LocalDateTime expirationDateTime = LocalDateTime.now().plusSeconds(expiration);
 
         Token newToken = Token.builder()
-                .user(mapToModel(user))
+                .user(user)
                 .token(token)
                 .revoked(0)
                 .expired(0)

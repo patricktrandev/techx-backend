@@ -32,7 +32,7 @@ public class UserDto {
     private String password;
     @JsonProperty("confirm_password")
     private String confirmPassword;
-    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+    @DateTimeFormat(pattern = "yyyy-MM-dd")
     @JsonProperty("date_of_birth")
     private LocalDate dateOfBirth;
     @JsonProperty("facebook_account_id")

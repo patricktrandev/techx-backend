@@ -60,9 +60,9 @@ public class OrderController {
             long totalElements=orderResponses.getTotalElements();
             List<OrderResponse> orderResponseList=orderResponses.getContent();
             return ResponseEntity.ok(OrderListResponse.builder()
-                            .orders(orderResponseList)
-                            .totalElements(totalElements)
-                            .totalPages(totalPages)
+                    .orders(orderResponseList)
+                    .totalElements(totalElements)
+                    .totalPages(totalPages)
                     .build());
         }catch (Exception e){
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -72,6 +72,7 @@ public class OrderController {
     @Operation(
             summary = "Create order"
     )
+    @PreAuthorize("hasRole('ROLE_USER')")
     public ResponseEntity<?> createOrder(@Valid @RequestBody OrderDto orderDto, BindingResult bindingResult){
 
         try{

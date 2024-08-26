@@ -12,10 +12,32 @@ import lombok.*;
 @NoArgsConstructor
 public class UserLoginDto {
     @JsonProperty("phone_number")
-    @NotBlank(message = "Phone number is required")
     private String phoneNumber;
+    @JsonProperty("email")
+    private String email;
     @NotBlank(message = "Password is required")
     private String password;
     @JsonProperty("role_id")
     private Long roleId;
+    @JsonProperty("facebook_account_id")
+    private String facebookAccountId;
+    @JsonProperty("google_account_id")
+    private String googleAccountId;
+    @JsonProperty("fullname")
+    private String fullname;
+    @JsonProperty("profile_image")
+    private String profileImage;
+
+    public boolean isPasswordBlank() {
+        return password == null || password.trim().isEmpty();
+    }
+
+    public boolean isFacebookAccountIdValid() {
+        return facebookAccountId != null && !facebookAccountId.isEmpty();
+    }
+
+
+    public boolean isGoogleAccountIdValid() {
+        return googleAccountId != null && !googleAccountId.isEmpty();
+    }
 }

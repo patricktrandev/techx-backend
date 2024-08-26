@@ -10,8 +10,7 @@ import com.blackcoffee.shopapp.response.ProductResponse;
 import com.blackcoffee.shopapp.services.BaseRedisService;
 import com.blackcoffee.shopapp.services.ProductService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.javafaker.Faker;
-import com.sun.tools.jconsole.JConsoleContext;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -44,6 +43,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 @RestController
@@ -85,8 +85,9 @@ public class ProductController {
     public ResponseEntity<Product> getProductDetailsById(@PathVariable("id") int id){
         return ResponseEntity.ok(productService.getProductById(id));
     }
+
     @Operation(
-            summary = "Get list of products by admin"
+            summary = "Get list of products by all users for order"
     )
     @GetMapping("/by-ids")
     public ResponseEntity<?> getProductListByIds(@RequestParam("ids") String ids){
@@ -112,63 +113,12 @@ public class ProductController {
             return ResponseEntity.notFound().build();
         }
     }
-    @Operation(
-            summary = "Upload image and save image by blob data"
-    )
-    @PostMapping(value = "/uploads/{id}",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadImage(@PathVariable("id") long id , @ModelAttribute("files") List<MultipartFile> files,  @RequestHeader("Authorization") String token){
-        try{
-           Product foundProduct=productService.getProductById(id);
-           int index=1;
-            files = files==null? new ArrayList<MultipartFile>(): files;
-            if(files.size()>5){
-                return ResponseEntity.badRequest().body("You can only upload maximum 5 images.");
-            }
-            List<ProductImageDto> imageList= new ArrayList<>();
-            for(MultipartFile file: files){
-                if(file.getSize()==0){
-                    continue;
-                }
-                if(file.getSize()> 10*1024*1024){
-                    //10MB
-                    return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body( "File is too large. Maximum size is 10MB");
-                }
-                String contentType=file.getContentType();
-                //logger.info(contentType);
-                //System.out.println(contentType);
-                if(contentType==null || !contentType.startsWith("image/") ){
-                    return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body("File must be an image");
-                }
-                String fileName= storeFile(file);
-                if (index == 1) {
-                    foundProduct.setThumbnail(fileName);
-                    productService.updateProductThumbnail(id,foundProduct);
 
-                    ;
-                }
-                //save db
-                ProductImageDto newProductImageDto = ProductImageDto.builder()
-                        .productId(foundProduct.getId())
-                        //.imageUrl(fileName)
-                        .build();
-                productService.createProductImage(foundProduct.getId(), newProductImageDto);
-                imageList.add(newProductImageDto);
-                index++;
-            }
-
-
-
-            return ResponseEntity.ok().body(imageList);
-        }catch (Exception e){
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
     @Operation(
             summary = "Create product without image"
     )
     @PostMapping
     public ResponseEntity<?> createProduct(@Valid @RequestBody ProductDto productDto,
-//                                           @RequestPart("file")MultipartFile file,
                                            @RequestHeader("Authorization") String token,
                                            BindingResult bindingResult){
         try{
@@ -315,32 +265,32 @@ public class ProductController {
         productService.deleteProduct(id);
         return ResponseEntity.ok("Delete products successfully");
     }
+//    @Operation(
+//            summary = "Fake data importing to db"
+//    )
+//    @PostMapping("/generateFakeProducts")
+//    public ResponseEntity<String> generateFakeProducts(){
+//        Faker faker= new Faker();
+//        for(int i=0; i<1_000; i++){
+//            String name= faker.commerce().productName();
+//            if(productService.existByName(name)){
+//                continue;
+//            }
+//            ProductDto productDto= ProductDto.builder()
+//                    .name(name)
+//                    .price((float)faker.number().numberBetween(0,1_300))
+//                    .description(faker.lorem().sentence())
+//                    .thumbnail("")
+//                    .categoryId((long) faker.number().numberBetween(2,5))
+//                    .build();
+//            productService.createProduct(productDto);
+//
+//        }
+//
+//        return ResponseEntity.ok("generate fake products successfully");
+//    }
     @Operation(
-            summary = "Fake data importing to db"
-    )
-    @PostMapping("/generateFakeProducts")
-    public ResponseEntity<String> generateFakeProducts(){
-        Faker faker= new Faker();
-        for(int i=0; i<1_000; i++){
-            String name= faker.commerce().productName();
-            if(productService.existByName(name)){
-                continue;
-            }
-            ProductDto productDto= ProductDto.builder()
-                    .name(name)
-                    .price((float)faker.number().numberBetween(0,1_300))
-                    .description(faker.lorem().sentence())
-                    .thumbnail("")
-                    .categoryId((long) faker.number().numberBetween(2,5))
-                    .build();
-            productService.createProduct(productDto);
-
-        }
-
-        return ResponseEntity.ok("generate fake products successfully");
-    }
-    @Operation(
-            summary = "Upload image and save in disk"
+        summary = "Upload image and save in db - blob data"
     )
     @PostMapping(value="/save-image/{productId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ROLE_ADMIN')")
@@ -361,7 +311,6 @@ public class ProductController {
         }
     }
     private Optional<byte[]> getImageBlobByName(String name) {
-
         byte[] imageBlob = productService.getImageByName(name).getImageUrl();
         return Optional.ofNullable(imageBlob);
 

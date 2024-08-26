@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.*;
@@ -36,7 +38,7 @@ public class JwtTokenUtils {
                     .setClaims(claims)
                     .setSubject(user.getPhoneNumber())
                     .setExpiration(new Date(System.currentTimeMillis()+expiration*1000L))
-                    .signWith(getSignInKey(),SignatureAlgorithm.HS256)
+                    .signWith(getSignInKey(),SignatureAlgorithm.HS512)
                     .compact();
 
             return token;
@@ -47,8 +49,13 @@ public class JwtTokenUtils {
     }
 
     private Key getSignInKey() {
-        byte[] bytes= Decoders.BASE64.decode(secretKey);
-        return Keys.hmacShaKeyFor(bytes);
+//        byte[] bytes= Decoders.BASE64.decode(secretKey);
+//        return Keys.hmacShaKeyFor(bytes);
+        String stringKey =secretKey;
+        byte[] encodedKey =Decoders.BASE64.decode(stringKey);
+        SecretKey key = new SecretKeySpec(encodedKey, 0, encodedKey.length,
+                "HmacSHA512");
+        return key;
     }
 
     private Claims extractAllClaims(String token){
@@ -63,12 +70,16 @@ public class JwtTokenUtils {
     }
 
     public boolean isTokenExpired(String token){
-        Date expirationDate= this.extractClaim(token, Claims::getExpiration);
+
+
+
+        Date expirationDate= extractAllClaims(token).getExpiration();
         return expirationDate.before(new Date());
     }
 
     public String extractPhoneNumber(String token){
-        return extractClaim(token, Claims::getSubject);
+        Claims claims = extractAllClaims(token);
+        return claims.get("phoneNumber", String.class);
     }
     public String getEmailFromToken(String token) {
         Claims claims = extractAllClaims(token);

@@ -1,6 +1,7 @@
 package com.blackcoffee.shopapp.controller;
 
 import com.blackcoffee.shopapp.dto.*;
+import com.blackcoffee.shopapp.model.Token;
 import com.blackcoffee.shopapp.model.User;
 import com.blackcoffee.shopapp.response.*;
 import com.blackcoffee.shopapp.services.BaseRedisService;
@@ -8,6 +9,7 @@ import com.blackcoffee.shopapp.services.TokenService;
 import com.blackcoffee.shopapp.services.UserService;
 import com.blackcoffee.shopapp.utils.LocalizationUtils;
 import com.blackcoffee.shopapp.utils.MessageKey;
+import com.blackcoffee.shopapp.utils.ValidationUtils;
 import com.blackcoffee.shopapp.utils.WebUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -21,7 +23,6 @@ import org.hibernate.sql.Update;
 import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,10 +30,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.LocaleResolver;
-import org.springframework.web.servlet.support.RequestContextUtils;
+
 
 import java.util.List;
-import java.util.Locale;
+
 
 @RestController
 @RequestMapping("${api.prefix}/users")
@@ -124,8 +125,29 @@ public class UserController {
                 List<String> errors =bindingResult.getFieldErrors().stream().map(e->e.getDefaultMessage()).toList();
                 return ResponseEntity.badRequest().body(errors);
             }
-            if(!(userDto.getPassword().equals(userDto.getConfirmPassword()))){
-                return ResponseEntity.badRequest().body("Password does not match");
+            if(    !(userDto.getPassword().equals(userDto.getConfirmPassword()))){
+                return ResponseEntity.badRequest().body(ResponseObject.builder()
+                        .status(HttpStatus.BAD_REQUEST)
+                        .data(null)
+                        .message("Password does not match")
+                );
+            }
+            if(userDto.getEmail()==null || userDto.getEmail().trim().isBlank()){
+                if(userDto.getPhoneNumber() == null || userDto.getPhoneNumber().isBlank()){
+                    return ResponseEntity.badRequest().body(ResponseObject.builder()
+                            .status(HttpStatus.BAD_REQUEST)
+                            .data(null)
+                            .message("At least email or phone number is required")
+                    );
+                }else{
+                    if(!ValidationUtils.isValidPhoneNumber(userDto.getPhoneNumber())){
+                        throw new Exception("Invalid phone number");
+                    }
+                }
+            }else{
+                if(!ValidationUtils.isValidEmail(userDto.getEmail())){
+                    throw new Exception("Invalid email format");
+                }
             }
             userService.createUser(userDto);
             return ResponseEntity.ok("Register user successfully");
@@ -153,26 +175,49 @@ public class UserController {
         summary = "Login "
 )
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody UserLoginDto userLoginDto, HttpServletRequest request){
+    public ResponseEntity<ResponseObject> login(@Valid @RequestBody UserLoginDto userLoginDto, HttpServletRequest request){
         try{
-            String tokenLogin = userService.loginUser(userLoginDto.getPhoneNumber(), userLoginDto.getPassword(), userLoginDto.getRoleId());
+            String tokenLogin = userService.loginUser(userLoginDto);
 
             String userAgent= request.getHeader("User-Agent");
 
-            UserResponse user=userService.getUserDetailsFromToken(tokenLogin);
+            User user=userService.getUserDetailsFromToken(tokenLogin);
 
-            tokenService.addToken(user,tokenLogin,userAgent);
+            Token jwt =tokenService.addToken(user,tokenLogin,userAgent);
 
             LoginResponse response= LoginResponse.builder()
                     .message(localizationUtils.getLocalizedMessage(MessageKey.LOGIN_SUCCESS,webUtils))
                     .token(tokenLogin)
-
+                    .tokenType(jwt.getTokenType())
+                    .id(user.getId())
+                    .username(user.getFullName())
+                    .roles(user.getRole())
                     .build();
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok().body(ResponseObject.builder()
+                    .message("Login successfully")
+                    .data(response)
+                    .status(HttpStatus.OK).build()
+            );
         }catch (Exception e){
-            return ResponseEntity.badRequest().body(LoginResponse.builder().message(localizationUtils.getLocalizedMessage(MessageKey.LOGIN_FAILED,e.getMessage())).build());
+            return ResponseEntity.badRequest().body(
+                    ResponseObject.builder()
+                            .message(e.getMessage())
+                            .data(null)
+                            .status(HttpStatus.BAD_REQUEST).build()
+            );
         }
 
+    }
+    private UserResponse mapToResponse(User user){
+        return UserResponse.builder()
+                .id(user.getId())
+                .phoneNumber(user.getPhoneNumber())
+                .address(user.getAddress())
+                .fullName(user.getFullName())
+                .isActive(user.getIsActive())
+                .dateOfBirth(user.getDateOfBirth())
+                .role(user.getRole())
+                .build();
     }
 
     @Operation(
@@ -183,8 +228,9 @@ public class UserController {
     public ResponseEntity<?> getUserDertails(@RequestHeader("Authorization") String token){
         try{
             String extractedToken= token.substring(7);
-            UserResponse user =userService.getUserDetailsFromToken(extractedToken);
-            return ResponseEntity.ok(user);
+            User user =userService.getUserDetailsFromToken(extractedToken);
+
+            return ResponseEntity.ok(mapToResponse(user));
         }catch (Exception e){
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -194,11 +240,25 @@ public class UserController {
             summary = "Get user information by providing id"
     )
     @GetMapping("/{id}")
-    public ResponseEntity<?> getUserDertailsById(@PathVariable("id") Long id){
+    public ResponseEntity<?> getUserDetailsById(@PathVariable("id") Long id){
         try{
 
             UserResponse user =userService.getUserDetailsById(id);
             return ResponseEntity.ok(user);
+        }catch (Exception e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+
+    }
+    @Operation(
+            summary = "Delete user by admin"
+    )
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteUserDetailsById(@PathVariable("id") Long id){
+        try{
+
+            userService.deleteUserByAdmin(id);
+            return ResponseEntity.ok("Delete user successfully");
         }catch (Exception e){
             return ResponseEntity.badRequest().body(e.getMessage());
         }

@@ -26,6 +26,7 @@ public class CategoryController {
     private final CategoryService categoryService;
     private final LocalizationUtils localizationUtils;
     private final WebUtils webUtils;
+
     @Operation(
             summary = "Get All Categories"
     )

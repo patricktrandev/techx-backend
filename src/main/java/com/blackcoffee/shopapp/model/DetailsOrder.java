@@ -1,6 +1,7 @@
 package com.blackcoffee.shopapp.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,5 +31,8 @@ public class DetailsOrder {
     @ManyToOne
     @JoinColumn(name = "product_id")
     private Product product;
-
+    @ManyToOne
+    @JoinColumn(name = "coupon_id")
+    @JsonManagedReference
+    private Coupon coupon;
 }

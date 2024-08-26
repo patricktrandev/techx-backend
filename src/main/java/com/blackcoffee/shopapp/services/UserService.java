@@ -1,6 +1,7 @@
 package com.blackcoffee.shopapp.services;
 
 import com.blackcoffee.shopapp.dto.UserDto;
+import com.blackcoffee.shopapp.dto.UserLoginDto;
 import com.blackcoffee.shopapp.exception.InvalidParamsException;
 import com.blackcoffee.shopapp.exception.PermissionDenyException;
 import com.blackcoffee.shopapp.model.User;
@@ -18,8 +19,9 @@ public interface UserService {
     void requestResetPassword(String email)throws MessagingException;
     void resetPassword(String newPassword, String email);
     void changePassword(Long userId, String newPassword);
-    String loginUser(String phoneNumber, String password, Long roleId) throws InvalidParamsException;
-    UserResponse getUserDetailsFromToken(String token)  throws Exception ;
+    void deleteUserByAdmin(Long userId);
+    String loginUser(UserLoginDto userLoginDto) throws InvalidParamsException;
+    User getUserDetailsFromToken(String token)  throws Exception ;
     UserResponse updateUserInfo(String token, UserDto userDto)throws PermissionDenyException;
     Page<UserResponse> getAlluserAdmin(String keyword, Pageable pageable);
     UserResponse updateRole(Long roleId,Long id) throws Exception;

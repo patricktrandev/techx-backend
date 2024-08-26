@@ -1,11 +1,13 @@
 package com.blackcoffee.shopapp.model;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.blackcoffee.shopapp.model.BaseEntity;
+import com.blackcoffee.shopapp.model.Coupon;
+import com.blackcoffee.shopapp.model.DetailsOrder;
+import com.blackcoffee.shopapp.model.User;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -17,7 +19,7 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class Order extends BaseEntity{
+public class Order extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -57,4 +59,8 @@ public class Order extends BaseEntity{
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonManagedReference
     private List<DetailsOrder> orderDetails;
+    @ManyToOne
+    @JoinColumn(name = "coupon_id")
+    @JsonManagedReference
+    private Coupon coupon;
 }

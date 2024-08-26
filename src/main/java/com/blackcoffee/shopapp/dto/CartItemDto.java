@@ -11,6 +11,5 @@ import lombok.*;
 public class CartItemDto {
     @JsonProperty("product_id")
     private Long productId;
-
     private int quantity;
 }

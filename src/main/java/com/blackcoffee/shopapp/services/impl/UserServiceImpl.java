@@ -2,6 +2,7 @@ package com.blackcoffee.shopapp.services.impl;
 
 import com.blackcoffee.shopapp.dto.ResetPasswordDto;
 import com.blackcoffee.shopapp.dto.UserDto;
+import com.blackcoffee.shopapp.dto.UserLoginDto;
 import com.blackcoffee.shopapp.exception.DataNotFoundException;
 import com.blackcoffee.shopapp.exception.InvalidParamsException;
 import com.blackcoffee.shopapp.exception.PermissionDenyException;
@@ -46,17 +47,17 @@ public class UserServiceImpl implements UserService {
     public User createUser(UserDto userDto) throws Exception {
         //check phone number exist or not
         Boolean check= userRepository.existsByPhoneNumber(userDto.getPhoneNumber());
-        Boolean checkEmail= userRepository.existsByEmail(userDto.getPhoneNumber());
-        if(check){
+        Boolean checkEmail= userRepository.existsByEmail(userDto.getEmail());
+        if(check && !userDto.getPhoneNumber().isBlank()){
             throw new DataIntegrityViolationException("Phone number already exists");
         }
-        if(checkEmail){
+        if(checkEmail && !userDto.getEmail().isBlank()){
             throw new DataIntegrityViolationException("Email already exists");
         }
         Role role= roleRepository.findById(userDto.getRoleId()).orElseThrow(()-> new DataNotFoundException("Role is invalid"));
 
         if(role.getName().toUpperCase().equals("ADMIN")){
-            throw new PermissionDenyException("Cannot create account as an admin");
+            throw new PermissionDenyException("Register as admin account is not allowed");
         }
         User user=User.builder()
                 .fullName(userDto.getFullName())
@@ -71,6 +72,7 @@ public class UserServiceImpl implements UserService {
 
 
         user.setRole(role);
+
         if(userDto.getFacebookAccountId()==0 && userDto.getGoogleAccountId()==0){
             String password= userDto.getPassword();
             String encodePassword= passwordEncoder.encode(password);
@@ -133,6 +135,16 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
     }
 
+    @Override
+    @Transactional
+    public void deleteUserByAdmin(Long userId) {
+        User user=userRepository.findById(userId).orElseThrow(()-> new DataNotFoundException("User not found."));
+        user.setIsActive(1);
+        userRepository.save(user);
+
+
+    }
+
     private Long otpGenerator(){
         Random random= new Random();
         return random.nextLong(100_000,999_999);
@@ -140,30 +152,50 @@ public class UserServiceImpl implements UserService {
 
 
     @Override
-    public String loginUser(String phoneNumber, String password, Long roleId) throws InvalidParamsException {
-        Optional<User> existingUser =userRepository.findByPhoneNumber(phoneNumber);
-        if(existingUser.isEmpty()){
+    public String loginUser(UserLoginDto userLoginDto) throws InvalidParamsException {
+       // Optional<User> existingUser =userRepository.findByPhoneNumber(phoneNumber);
+        Optional<User> optionalUser= Optional.empty();
+        String userSubject= null;
+        if(userLoginDto.getPhoneNumber() !=null && !userLoginDto.getPhoneNumber().isBlank() ){
+            optionalUser=userRepository.findByPhoneNumber(userLoginDto.getPhoneNumber());
+            userSubject= userLoginDto.getPhoneNumber();
+        }
+        if(optionalUser.isEmpty() && userLoginDto.getEmail()!=null){
+            optionalUser=userRepository.findByEmail(userLoginDto.getEmail());
+        }
+
+        if(optionalUser.isEmpty()){
             throw new DataNotFoundException("Invalid phone number or password");
         }
-        if(existingUser.get().getFacebookAccountId()==0 && (existingUser.get().getGoogleAccountId()==0)){
-            if(!passwordEncoder.matches(password, existingUser.get().getPassword())){
+        User existingUser=optionalUser.get();
+
+        if(existingUser.getFacebookAccountId()==0 && (existingUser.getGoogleAccountId()==0)){
+            if(!passwordEncoder.matches(userLoginDto.getPassword(), existingUser.getPassword())){
                 throw new BadCredentialsException("Wrong password or phone number");
             }
 
         }
+        Long roleId= userLoginDto.getRoleId();
         Optional<Role> roleFound=roleRepository.findById(roleId);
-        if(roleFound.isEmpty() || !roleId.equals(existingUser.get().getRole().getId())){
+        if(roleFound.isEmpty() || !roleId.equals(existingUser.getRole().getId())){
             throw new BadCredentialsException("Password or phone number does not exist.");
         }
-        UsernamePasswordAuthenticationToken authenticationToken= new UsernamePasswordAuthenticationToken(phoneNumber,password);
+        if(existingUser.getIsActive()!=0){
+            throw new DataNotFoundException("User does not exist");
+        }
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                userSubject,
+                userLoginDto.isPasswordBlank()  ? "" : userLoginDto.getPassword(),
+                existingUser.getAuthorities()
+        );
 
         authenticationManager.authenticate(authenticationToken);
-        return jwtTokenUtils.generateToken(existingUser.get());
+        return jwtTokenUtils.generateToken(existingUser);
 
     }
 
     @Override
-    public UserResponse getUserDetailsFromToken(String token) throws Exception {
+    public User getUserDetailsFromToken(String token) throws Exception {
 
         if(jwtTokenUtils.isTokenExpired(token)){
             throw new Exception("Token is expired");
@@ -172,7 +204,7 @@ public class UserServiceImpl implements UserService {
         User user= userRepository.findByPhoneNumber(phoneNumber).orElseThrow(()-> new DataNotFoundException("User not found"));
 
 
-        return mapToResponse(user);
+        return user;
     }
 
     @Override

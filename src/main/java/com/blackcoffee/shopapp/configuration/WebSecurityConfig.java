@@ -40,21 +40,6 @@ public class WebSecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
-//                .cors(new Customizer<CorsConfigurer<HttpSecurity>>() {
-//                    @Override
-//                    public void customize(CorsConfigurer<HttpSecurity> httpSecurityCorsConfigurer) {
-//                        CorsConfiguration configuration = new CorsConfiguration();
-//                        configuration.setAllowedOrigins(List.of("*" ));
-//
-//                        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-//                        configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token"));
-//                        configuration.setExposedHeaders(List.of("x-auth-token"));
-//                        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-//                        source.registerCorsConfiguration("/**", configuration);
-//                        httpSecurityCorsConfigurer.configurationSource(source);
-//                    }
-//                })
-
                 .authorizeHttpRequests(request-> {
                     request
                             .requestMatchers(
@@ -63,17 +48,10 @@ public class WebSecurityConfig {
                                     String.format("%s/users/reset/send-email",apiPrefix),
                                     String.format("%s/users/reset-password",apiPrefix),
                                     String.format("%s/users/token-valid",apiPrefix),
-                                    String.format("/swagger-ui/**"),
-                                    String.format("/swagger-resources/*"),
-                                    String.format("/v3/api-docs")
-
-
-
-
-
+                                    String.format("%s/healthcheck/**",apiPrefix)
                             ).permitAll()
                             .requestMatchers(
-                                    HttpMethod.GET,String.format("%s/users/**",apiPrefix)
+                                    HttpMethod.GET,String.format("%s/coupons/calculate",apiPrefix)
                             ).permitAll()
                             .requestMatchers("/swagger-ui/**",
                                     "/swagger-resources/*",
@@ -89,16 +67,18 @@ public class WebSecurityConfig {
                             .requestMatchers(
                                     HttpMethod.GET,String.format("%s/products/images/**",apiPrefix)
                             ).permitAll()
-
-//                            .requestMatchers(
-//                                    HttpMethod.GET,String.format("%s/products/img/**",apiPrefix)
-//                            ).permitAll()
                             .requestMatchers(
                                     HttpMethod.GET,String.format("%s/categories/**",apiPrefix)
                             ).permitAll()
                             .requestMatchers(
                                     HttpMethod.PUT,String.format("%s/users/**",apiPrefix)
                             ).hasAnyRole("USER", "ADMIN")
+                            .requestMatchers(
+                                    HttpMethod.GET,String.format("%s/users/**",apiPrefix)
+                            ).hasAnyRole("USER", "ADMIN")
+                            .requestMatchers(
+                                    HttpMethod.DELETE,String.format("%s/users/**",apiPrefix)
+                            ).hasAnyRole( "ADMIN")
                             .requestMatchers(
                                     HttpMethod.PUT,String.format("%s/roles/**",apiPrefix)
                             ).hasAnyRole( "ADMIN")
@@ -137,11 +117,23 @@ public class WebSecurityConfig {
                                     HttpMethod.POST,String.format("%s/orders/**",apiPrefix)
                             ).hasAnyRole("USER")
                             .requestMatchers(
-                             HttpMethod.PUT,String.format("%s/orders/**",apiPrefix)
-                                ).hasRole("ADMIN")
+                                    HttpMethod.PUT,String.format("%s/orders/**",apiPrefix)
+                            ).hasRole("ADMIN")
+                            .requestMatchers(
+                                    HttpMethod.GET,String.format("%s/orders/**",apiPrefix)
+                            ).hasAnyRole( "USER", "ADMIN")
                             .requestMatchers(
                                     HttpMethod.DELETE,String.format("%s/orders/**",apiPrefix)
                             ).hasRole("ADMIN")
+                            .requestMatchers(
+                                    HttpMethod.GET,String.format("%s/coupons/**",apiPrefix)
+                            ).hasAnyRole( "ADMIN")
+                            .requestMatchers(
+                                    HttpMethod.DELETE,String.format("%s/coupons/**",apiPrefix)
+                            ).hasAnyRole( "ADMIN")
+                            .requestMatchers(
+                                    HttpMethod.POST,String.format("%s/coupons/**",apiPrefix)
+                            ).hasAnyRole( "ADMIN")
                             .anyRequest().authenticated();
                 })
                 .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class)
